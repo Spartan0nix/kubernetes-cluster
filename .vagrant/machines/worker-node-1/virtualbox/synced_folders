@@ -1,1 +1,0 @@
-{"virtualbox":{"/vagrant":{"type":"virtualbox","guestpath":"/vagrant","hostpath":"C:/Users/Public/Dev/Kubernetes/kubeadm/kubernetes-cluster","disabled":false,"__vagrantfile":true}}}
