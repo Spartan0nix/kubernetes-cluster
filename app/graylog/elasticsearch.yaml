@@ -1,0 +1,113 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: elasticsearch
+  namespace: graylog
+  labels:
+    app: graylog
+    tier: elasticsearch
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: graylog
+      tier: elasticsearch
+  template:
+    metadata:
+      labels:
+        app: graylog
+        tier: elasticsearch
+    spec:
+      containers:
+      - name: elasticsearch
+        image: docker.elastic.co/elasticsearch/elasticsearch-oss:7.10.2
+        ports:
+        - containerPort: 9200
+        resources:
+          limits:
+            cpu: 400m
+            memory: 500Mi
+          requests:
+            cpu: 200m
+            memory: 250Mi
+        env:
+          - name: node.name
+            valueFrom:
+              fieldRef:
+                fieldPath: metadata.name
+          - name: cluster.name
+            value: "graylog-es"
+          - name: discovery.type
+            value: single-node
+          - name: ES_JAVA_OPTS
+            value: -Xmx96m -Xms96m
+        volumeMounts:
+        - name: elasticsearch-data
+          mountPath: /usr/share/elasticsearch/data
+      volumes:
+      - name: elasticsearch-data
+        persistentVolumeClaim:
+          claimName: elasticsearch-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: elasticsearch
+  namespace: graylog
+  labels:
+    app: graylog
+    tier: elasticsearch
+spec:
+  selector:
+    app: graylog
+    tier: elasticsearch
+  ports:
+  - protocol: TCP
+    port: 9200
+    targetPort: 9200
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: elasticsearch-headless
+  namespace: graylog
+  labels:
+    app: graylog
+    tier: elasticsearch
+spec:
+  clusterIP: None
+  selector:
+    app: graylog
+    tier: elasticsearch
+  ports:
+  - protocol: TCP
+    port: 9200
+    targetPort: 9200
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: elasticsearch-pvc
+  namespace: graylog
+spec:
+  storageClassName: nfs
+  accessModes: 
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: graylog-elasticsearch-pv
+  namespace: graylog
+spec:
+  storageClassName: nfs
+  accessModes:
+    - ReadWriteMany
+  capacity:
+    storage: 5Gi
+  nfs:
+    server: nfs-server
+    path: /nfs/system/graylog/elasticsearch
