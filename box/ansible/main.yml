@@ -1,0 +1,198 @@
+- name: Provisionning node-box
+  hosts: nodebox
+  handlers:
+    - name: Generate containerd default configuration
+      ansible.builtin.shell: |
+        set -o pipefail
+        containerd config default | tee /etc/containerd/config.toml
+      args:
+        executable: /bin/bash
+      become: true
+
+  tasks:
+    - name: Update apt packages and upgrade system
+      ansible.builtin.apt:
+        upgrade: true
+        update_cache: true
+      become: true
+
+    - name: Install required packages # noqa: package-latest
+      ansible.builtin.package:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+          - jq
+          - nfs-common
+          - htop
+          - wget
+          - python3
+          - python3-pip
+        state: latest
+      become: true
+
+    - name: Disable swap in systemd
+      ansible.builtin.systemd:
+        name: swap.target
+        state: stopped
+        enabled: false
+      become: true
+
+    - name: Disable swap in /etc/sysctl.conf
+      ansible.builtin.lineinfile:
+        path: /etc/sysctl.conf
+        regexp: '^vm.swappiness = 0'
+        line: 'vm.swappiness = 0'
+      become: true
+
+    - name: Configure iptables for bridged traffic
+      ansible.builtin.lineinfile:
+        path: /etc/modules-load.d/k8s.conf
+        regexp: '^br_netfilter'
+        line: 'br_netfilter'
+        create: true
+        mode: 0644
+      become: true
+
+    - name: Configure sysctl for bridged network
+      ansible.builtin.blockinfile:
+        path: /etc/sysctl.d/k8s.conf
+        block: |
+          net.bridge.bridge-nf-call-ip6tables = 1
+          net.bridge.bridge-nf-call-iptables = 1
+          net.ipv4.ip_forward = 1
+        create: true
+        mode: 0644
+      become: true
+
+    - name: Apply change to sysctl
+      ansible.builtin.shell: |
+        sysctl --system
+      register: sysctl
+      changed_when: sysctl.rc == 0
+      become: true
+
+    - name: Enable modprobe modules
+      ansible.builtin.shell: |
+        modprobe overlay
+        modprobe br_netfilter
+      register: modprobe
+      changed_when: modprobe.rc == 0
+      become: true
+
+    - name: Upgrade pip
+      ansible.builtin.shell: |
+        pip3 install --upgrade pip
+      register: pip_upgrade
+      changed_when: pip_upgrade.rc == 0
+
+    - name: Install pip modules # noqa: package-latest
+      ansible.builtin.pip:
+        name: kubernetes
+        state: latest
+
+    - name: Add docker APT repo # noqa : yaml
+      ansible.builtin.shell: |
+        set -o pipefail
+        wget -qO- https://download.docker.com/linux/debian/gpg \
+          | gpg --dearmor \
+          | tee /etc/apt/trusted.gpg.d/docker.gpg
+
+        chmod 644 /etc/apt/trusted.gpg.d/docker.gpg
+        chown root:root /etc/apt/trusted.gpg.d/docker.gpg
+
+        echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/trusted.gpg.d/docker.gpg] https://download.docker.com/linux/debian $(lsb_release -cs) stable" \
+          | tee /etc/apt/sources.list.d/docker.list
+      register: apt_repo_docker
+      changed_when: apt_repo_docker.rc != 0
+      args:
+        executable: /bin/bash
+      become: true
+
+    - name: Add kubernetes APT repo
+      ansible.builtin.shell: |
+        set -o pipefail
+
+        wget -qO- https://packages.cloud.google.com/apt/doc/apt-key.gpg \
+          | gpg --dearmor \
+          | tee /etc/apt/trusted.gpg.d/kubernetes-archive-keyring.gpg
+
+        chmod 644 /etc/apt/trusted.gpg.d/kubernetes-archive-keyring.gpg
+        chown root:root /etc/apt/trusted.gpg.d/kubernetes-archive-keyring.gpg
+
+        echo "deb [signed-by=/etc/apt/trusted.gpg.d/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" \
+          | tee /etc/apt/sources.list.d/kubernetes.list
+      register: apt_repo_k8s
+      changed_when: apt_repo_k8s.rc != 0
+      args:
+        executable: /bin/bash
+      become: true
+
+    - name: Update package repositories
+      ansible.builtin.apt:
+        update_cache: true
+      become: true
+
+    - name: Install containerd.io and kubernetes packages # noqa : package-latest
+      ansible.builtin.package:
+        name:
+          - containerd.io
+          - kubelet
+          - kubeadm
+          - kubectl
+        state: latest
+      become: true
+      notify:
+        - Generate containerd default configuration
+
+    - name: Enable containerd systemd cgroup # noqa: command-instead-of-module
+      ansible.builtin.shell: |
+        sed -i 's/            SystemdCgroup = false/            SystemdCgroup = true/' /etc/containerd/config.toml
+      register: config_containerd_cgroup
+      changed_when: config_containerd_cgroup.rc == 0
+      args:
+        executable: /bin/bash
+      become: true
+
+    - name: Restart containerd
+      ansible.builtin.systemd:
+        name: containerd
+        state: restarted
+      become: true
+
+    - name: Prevent kubelet from changes
+      ansible.builtin.dpkg_selections:
+        name: kubelet
+        selection: hold
+      become: true
+
+    - name: Prevent kubeadm from changes
+      ansible.builtin.dpkg_selections:
+        name: kubeadm
+        selection: hold
+      become: true
+
+    - name: Prevent kubectl from changes
+      ansible.builtin.dpkg_selections:
+        name: kubectl
+        selection: hold
+      become: true
+
+    - name: Enable kubectl autocompletion (system scope)
+      ansible.builtin.shell: |
+        set -o pipefail
+        kubectl completion bash | tee /usr/share/bash-completion/completions/kubectl > /dev/null
+      register: kubectl_completion
+      changed_when: kubectl_completion.rc == 0
+      args:
+        executable: /bin/bash
+      become: true
+
+    - name: Remove node-box hosts entry
+      ansible.builtin.lineinfile:
+        path: /etc/hosts
+        state: absent
+        regexp: '^127.0.1.1 node-box node-box'
+      become: true
