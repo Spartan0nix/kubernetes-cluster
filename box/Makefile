@@ -34,7 +34,7 @@ package:
 
 	vagrant.exe destroy
 
-	box_version=$(shell date +%Y%m%d); vagrant.exe box add --name node-box "./node-box-$$box_version"
+	box_version=$(shell date +%Y%m%d); vagrant.exe box add --name node-box "./node-box-$$box_version" --force
 
 clean:
 	box_version=$(shell date +%Y%m%d); rm "./node-box-$$box_version"

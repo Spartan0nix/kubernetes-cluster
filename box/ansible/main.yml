@@ -148,12 +148,10 @@
         - Generate containerd default configuration
 
     - name: Enable containerd systemd cgroup # noqa: command-instead-of-module
-      ansible.builtin.shell: |
-        sed -i 's/            SystemdCgroup = false/            SystemdCgroup = true/' /etc/containerd/config.toml
-      register: config_containerd_cgroup
-      changed_when: config_containerd_cgroup.rc == 0
-      args:
-        executable: /bin/bash
+      ansible.builtin.replace:
+        path: /etc/containerd/config.toml
+        regexp: '^(\s+SystemdCgroup =)\s(false)$'
+        replace: '\1 true'
       become: true
 
     - name: Restart containerd
