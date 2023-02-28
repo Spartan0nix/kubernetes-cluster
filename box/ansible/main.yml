@@ -24,7 +24,7 @@
           - wget
           - python3
           - python3-pip
-          - network-manager
+          # - network-manager
         state: latest
       become: true
 
@@ -143,8 +143,8 @@
     - name: Install packages # noqa : package-latest
       ansible.builtin.package:
         name:
-          - docker-ce
-          - docker-ce-cli
+          # - docker-ce
+          # - docker-ce-cli
           - containerd.io
           - kubelet
           - kubeadm
@@ -205,13 +205,13 @@
       changed_when: control_images.rc == 0
       become: true
 
-    - name: Add vagrant user to docker group
-      ansible.builtin.user:
-        append: true
-        name: "{{ ansible_user }}"
-        groups:
-          - docker
-      become: true
+    # - name: Add vagrant user to docker group
+    #   ansible.builtin.user:
+    #     append: true
+    #     name: "{{ ansible_user }}"
+    #     groups:
+    #       - docker
+    #   become: true
 
     # -----------------------------------------
     # HELM
@@ -238,22 +238,22 @@
     # -----------------------------------------
     # CALICO
     # -----------------------------------------
-    - name: Create calico config for NetworkManager
-      ansible.builtin.shell: |
-        cat <<EOF > /etc/NetworkManager/conf.d/calico.conf
-        [keyfile]
-        unmanaged-devices=interface-name:cali*;interface-name:tunl*;interface-name:vxlan.calico;interface-name:vxlan-v6.calico;interface-name:wireguard.cali;interface-name:wg-v6.cali
-        EOF
-      register: networkmanager_conf
-      changed_when: networkmanager_conf.rc == 0
-      become: true
+    # - name: Create calico config for NetworkManager
+    #   ansible.builtin.shell: |
+    #     cat <<EOF > /etc/NetworkManager/conf.d/calico.conf
+    #     [keyfile]
+    #     unmanaged-devices=interface-name:cali*;interface-name:tunl*;interface-name:vxlan.calico;interface-name:vxlan-v6.calico;interface-name:wireguard.cali;interface-name:wg-v6.cali
+    #     EOF
+    #   register: networkmanager_conf
+    #   changed_when: networkmanager_conf.rc == 0
+    #   become: true
 
-    - name: Restart and enable NetworkManager systemd service
-      ansible.builtin.systemd:
-        name: NetworkManager
-        state: restarted
-        enabled: true
-      become: true
+    # - name: Restart and enable NetworkManager systemd service
+    #   ansible.builtin.systemd:
+    #     name: NetworkManager
+    #     state: restarted
+    #     enabled: true
+    #   become: true
 
     # -----------------------------------------
     # CLEANUP
