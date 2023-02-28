@@ -1,0 +1,54 @@
+- name: Check for existing haproxy configuration
+  ansible.builtin.stat:
+    path: /etc/haproxy/haproxy.cfg
+  register: haproxy_config
+  become: true
+
+- name: Update apt packages and upgrade system
+  ansible.builtin.apt:
+    upgrade: true
+    update_cache: true
+  become: true
+  when: not haproxy_config.stat.exists
+
+- name: Install packages # noqa : package-latest
+  ansible.builtin.package:
+    name: haproxy
+    state: latest
+  become: true
+  when: not haproxy_config.stat.exists
+
+- name: Update Haproxy conf
+  ansible.builtin.blockinfile:
+    path: /etc/haproxy/haproxy.cfg
+    block: |
+      frontend apiserver
+        bind *:6443
+        mode tcp
+        option tcplog
+        default_backend apiserver
+
+      backend apiserver
+        option httpchk GET /healthz
+        http-check expect status 200
+        mode tcp
+        option ssl-hello-chk
+        balance roundrobin
+  become: true
+  when: not haproxy_config.stat.exists
+
+- name: Add server for backend
+  ansible.builtin.lineinfile:
+    path: /etc/haproxy/haproxy.cfg
+    line: "    server {{ item.name }} {{ item.ip }}:{{ item.port }} check"
+    insertbefore: "END ANSIBLE MANAGED BLOCK"
+  loop: "{{ haproxy_backend_server }}"
+  become: true
+  when: not haproxy_config.stat.exists
+
+- name: Restart haproxy service
+  ansible.builtin.systemd:
+    name: haproxy
+    state: restarted
+  become: true
+  when: not haproxy_config.stat.exists

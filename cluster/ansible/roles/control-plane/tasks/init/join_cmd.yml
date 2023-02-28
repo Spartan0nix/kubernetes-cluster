@@ -1,0 +1,43 @@
+- name: Generate cluster join command
+  ansible.builtin.shell: |
+    kubeadm token create --print-join-command > /tmp/join.sh
+    sed -i 's/$/ --cri-socket unix:\/\/\/var\/run\/containerd\/containerd.sock/' /tmp/join.sh
+  register: k8s_cluster_join_cmd
+  changed_when: k8s_cluster_join_cmd.rc == 0
+  become: true
+
+- name: Save cluster join command locally
+  ansible.builtin.fetch:
+    src: /tmp/join.sh
+    dest: "{{ role_path }}/files/join-worker.sh"
+    mode: "0644"
+    flat: true
+  become: true
+
+- name: Generate a certificate key
+  ansible.builtin.shell: |
+    set -o pipefail
+
+    kubeadm_out=$(kubeadm init phase upload-certs --upload-certs)
+    key=$(echo $kubeadm_out | sed -r 's/^(.*certificate key: )(.*)$/\2/')
+    echo $key
+  register: certificate_key
+  changed_when: certificate_key.rc == 0
+  args:
+    executable: /bin/bash
+  become: true
+
+- name: Update cluster join command for control-plane # noqa: command-instead-of-module
+  ansible.builtin.shell: |
+    sed -i 's/$/ --control-plane --certificate-key "{{ certificate_key.stdout }}"/' /tmp/join.sh
+  register: k8s_cluster_join_cmd_control_plane
+  changed_when: k8s_cluster_join_cmd_control_plane.rc == 0
+  become: true
+
+- name: Save cluster join command locally (control-plane)
+  ansible.builtin.fetch:
+    src: /tmp/join.sh
+    dest: "{{ role_path }}/files/join-control-plane.sh"
+    mode: "0644"
+    flat: true
+  become: true

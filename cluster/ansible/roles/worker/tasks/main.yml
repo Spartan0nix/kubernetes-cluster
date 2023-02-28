@@ -1,0 +1,53 @@
+# -- TODO
+
+# - name: Check if kubelet is already configured
+#   ansible.builtin.stat:
+#     path: /etc/kubernetes/kubelet.conf
+#   register: kubelet_conf
+
+# - name: Copy join command to the remote hosts
+#   ansible.builtin.copy:
+#     src: "{{ playbook_dir }}/roles/cluster/files/join-worker.sh"
+#     dest: /tmp/join-worker.sh
+#     mode: "0744"
+#   when: not kubelet_conf.stat.exists
+
+# - name: Execute join command
+#   ansible.builtin.shell:
+#     bash /tmp/join-worker.sh
+#   register: worker_join_output
+#   changed_when: worker_join_output.rc == 0
+#   when: not kubelet_conf.stat.exists
+#   args:
+#     executable: /bin/bash
+#   become: true
+
+# - name: Remove join command
+#   ansible.builtin.file:
+#     path: /tmp/join-worker.sh
+#     state: absent
+#   when: not kubelet_conf.stat.exists
+
+# - name: Approve CSR
+#   ansible.builtin.shell: |
+#     set -o pipefail
+#     for i in `kubectl get csr | grep -i pending | grep -i "system:node:{{ ansible_facts['hostname'] }}" |  awk '{ print $1 }'`
+#     do
+#       kubectl certificate approve $i
+#     done
+#   register: csr_approved
+#   changed_when: csr_approved.rc == 0
+#   args:
+#     executable: /bin/bash
+#   when: not kubelet_conf.stat.exists
+#   delegate_to: 192.168.80.11
+
+# - name: Add label to node
+#   ansible.builtin.shell: |
+#     kubectl label node "{{ ansible_facts['hostname'] }}" node-role.kubernetes.io/worker=
+#   register: node_label
+#   changed_when: node_label.rc == 0
+#   args:
+#     executable: /bin/bash
+#   when: not kubelet_conf.stat.exists
+#   delegate_to: 192.168.80.11

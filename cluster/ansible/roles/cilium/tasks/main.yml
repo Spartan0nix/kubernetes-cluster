@@ -1,0 +1,9 @@
+- name: Check for previous install
+  ansible.builtin.stat:
+    path: /usr/local/bin/cilium
+  register: cilium_cli
+  become: true
+
+- name: Install Cilium
+  ansible.builtin.include_tasks: init_cilium.yml
+  when: not cilium_cli.stat.exists

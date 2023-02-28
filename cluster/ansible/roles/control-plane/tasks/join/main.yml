@@ -1,0 +1,52 @@
+- name: Copy admin kubeconfig
+  ansible.builtin.copy:
+    src: admin.conf
+    dest: /etc/kubernetes/admin.conf
+    mode: "0600"
+  become: true
+
+- name: Copy join script
+  ansible.builtin.copy:
+    src: join-control-plane.sh
+    dest: /tmp/join-control-plane.sh
+    mode: "0700"
+  become: true
+
+- name: Add '--apiserver-advertise-address' to join script # noqa: command-instead-of-module
+  ansible.builtin.shell: |
+    sed -i 's/$/ --apiserver-advertise-address "{{ ansible_host }}"/' /tmp/join-control-plane.sh
+  register: k8s_join_cmd
+  changed_when: k8s_join_cmd.rc == 0
+  become: true
+
+- name: Execute join script
+  ansible.builtin.shell: |
+    bash /tmp/join-control-plane.sh
+  register: k8s_join_cmd_output
+  changed_when: k8s_join_cmd_output.rc == 0
+  args:
+    executable: /bin/bash
+  become: true
+
+- name: Debug
+  ansible.builtin.debug:
+    var: k8s_join_cmd_output
+
+- name: Remove join script
+  ansible.builtin.file:
+    path: /tmp/join-control-plane.sh
+    state: absent
+  become: true
+
+- name: Approve CSR
+  ansible.builtin.shell: |
+    set -o pipefail
+    for i in `kubectl get csr | grep -i pending | grep -i "system:node:{{ ansible_facts['hostname'] }}" |  awk '{ print $1 }'`
+    do
+      kubectl certificate approve $i
+    done
+  register: csr_approved
+  changed_when: csr_approved.rc == 0
+  delegate_to: 192.168.80.11
+  args:
+    executable: /bin/bash

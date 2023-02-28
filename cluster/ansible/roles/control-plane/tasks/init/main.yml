@@ -1,0 +1,84 @@
+- name: Copy kubeadm config file
+  ansible.builtin.template:
+    src: kubeadm-config.yml.j2
+    dest: /tmp/kubeadm-config.yml
+    mode: "0644"
+
+# # kubeadm init --node-name "master-1" \
+# #       --control-plane-endpoint="cluster-endpoint" \
+# #       --apiserver-advertise-address="192.168.80.10" \
+# #       --pod-network-cidr="172.16.0.0/16" \
+# #       --service-cidr="172.17.0.0/22" \
+# #       --cri-socket unix:///var/run/containerd/containerd.sock \
+# #       --v=5
+# - name: Bootstrap the Kubernetes control-plane node
+#   ansible.builtin.shell: |
+#     kubeadm init --node-name "{{ ansible_facts['hostname'] }}" \
+#       --control-plane-endpoint="{{ control_plane_endpoint }}" \
+#       --pod-network-cidr="{{ pod_cidr }}" \
+#       --service-cidr="{{ service_cidr }}" \
+#       --cri-socket unix:///var/run/containerd/containerd.sock \
+#       --upload-certs
+#   register: kubeadm_init
+#   changed_when: kubeadm_init.rc == 0
+#   become: true
+
+- name: Bootstrap the Kubernetes control-plane node
+  ansible.builtin.shell: |
+    kubeadm init --node-name "{{ ansible_facts['hostname'] }}" \
+      --config /tmp/kubeadm-config.yml \
+      --upload-certs
+  register: kubeadm_init
+  changed_when: kubeadm_init.rc == 0
+  become: true
+
+- name: Debug
+  ansible.builtin.debug:
+    var: kubeadm_init
+
+- name: Remove kubeadm config file
+  ansible.builtin.file:
+    path: /tmp/kubeadm-config.yml
+    state: absent
+
+- name: Create kube config directory
+  ansible.builtin.file:
+    path: ".kube"
+    state: directory
+    mode: "0750"
+
+- name: Copy admin kubeconfig
+  ansible.builtin.copy:
+    src: /etc/kubernetes/admin.conf
+    dest: ".kube/config"
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0744"
+    remote_src: true
+  become: true
+
+- name: Save admin kubeconfig locally
+  ansible.builtin.fetch:
+    src: /etc/kubernetes/admin.conf
+    dest: "{{ role_path }}/files/admin.conf"
+    mode: "0644"
+    flat: true
+  become: true
+
+- name: Approve CSR
+  ansible.builtin.shell: |
+    set -o pipefail
+    for i in `kubectl get csr | grep -i pending | grep -i "system:node:{{ ansible_facts['hostname'] }}" |  awk '{ print $1 }'`
+    do
+      kubectl certificate approve $i
+    done
+  register: csr_approved
+  changed_when: csr_approved.rc == 0
+  args:
+    executable: /bin/bash
+
+- name: Configure worker and control-plane join commands
+  ansible.builtin.include_tasks: "./join_cmd.yml"
+
+- name: Configure worker kubeconfig
+  ansible.builtin.include_tasks: "./worker_kubeconfig.yml"

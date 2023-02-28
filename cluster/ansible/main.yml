@@ -1,0 +1,39 @@
+- name: Intialize haproxy
+  hosts: haproxy
+  vars:
+    haproxy_backend_server:
+      - name: control-node-1
+        ip: 192.168.80.11
+        port: 6443
+      # - name: control-node-2
+      #   ip: 192.168.80.12
+      #   port: 6443
+      # - name: control-node-3
+      #   ip: 192.168.80.13
+      #   port: 6443
+  roles:
+    - haproxy
+
+- name: Intialize cluster
+  hosts: control_plane
+  vars:
+    control_plane_endpoint: cluster-endpoint
+    master_cidr: 192.168.80.0/24
+    pod_cidr: 172.16.0.0/16
+    service_cidr: 172.17.0.0/22
+    operation: init
+  roles:
+    - control-plane
+    - cilium
+
+- name: Add nodes to the control plane
+  hosts: control_plane_ha
+  vars:
+    operation: join-node
+  roles:
+    - control-plane
+
+# - name: Workers nodes provisionning
+#   hosts: workers
+#   roles:
+#     - worker

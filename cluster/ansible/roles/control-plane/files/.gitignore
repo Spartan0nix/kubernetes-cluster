@@ -1,0 +1,4 @@
+admin.conf
+join-control-plane.sh
+join-worker.sh
+kubeconfig-worker.conf
