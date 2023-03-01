@@ -1,11 +1,3 @@
-# - name: Init control-plane
-#   ansible.builtin.include_tasks: init_cluster.yml
-#   when: operation is defined and operation == "init"
-
-# - name: Add node to the control-plane
-#   ansible.builtin.include_tasks: join_node.yml
-#   when: operation is defined and operation == "join-node"
-
 - name: Checking for existing etcd directory
   ansible.builtin.stat:
     path: /var/lib/etcd/

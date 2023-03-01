@@ -1,9 +1,0 @@
-# - name: Checking for existing etcd directory
-#   ansible.builtin.stat:
-#     path: /var/lib/etcd/
-#   become: true
-#   register: etcd_directory
-
-# - name: Init control-plane
-#   ansible.builtin.include_tasks: "init/main.yml"
-#   when: not etcd_directory.stat.exists

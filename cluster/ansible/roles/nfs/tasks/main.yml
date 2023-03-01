@@ -1,42 +1,38 @@
 - name: Install packages
-  package:
-    name: 
+  ansible.builtin.package: # noqa : package-latest
+    name:
       - nfs-kernel-server
     state: latest
   become: true
 
 - name: Create nfs folders
-  file:
+  ansible.builtin.file:
     path: "{{ item.value }}"
     state: directory
     recurse: true
   become: true
-  with_dict: { 
-    zabbix_postgres: "/nfs/system/zabbix/postgres",
-    graylog_mongodb: "/nfs/system/graylog/mongodb",
-    graylog_els: "/nfs/system/graylog/elasticsearch",
-    kibana_els: "/nfs/system/kibana/elasticsearch",
-  }
+  loop:
+    - "/nfs/system/zabbix/postgres"
 
 - name: Configure /etc/exports
-  lineinfile:
+  ansible.builtin.lineinfile:
     path: /etc/exports
     regexp: '^/nfs/ 192.168.80.0/24(rw,sync,no_subtree_check,no_root_squash)'
     line: '/nfs/ 192.168.80.0/24(rw,sync,no_subtree_check,no_root_squash)'
   become: true
 
 - name: Set nfs folder permissions
-  file:
+  ansible.builtin.file:
     path: /nfs
     state: directory
     owner: nobody
     group: nogroup
-    mode: go+rw
+    mode: "0770"
     recurse: true
   become: true
 
 - name: Start nfs-kernel-server service
-  systemd:
+  ansible.builtin.systemd:
     state: started
     name: nfs-kernel-server
     enabled: true

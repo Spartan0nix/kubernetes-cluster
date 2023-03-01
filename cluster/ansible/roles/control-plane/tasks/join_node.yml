@@ -1,9 +1,0 @@
-# - name: Check for existing pki directory
-#   ansible.builtin.stat:
-#     path: /etc/kubernetes/pki
-#   register: pki_directory
-#   become: true
-
-# - name: Join new control node
-#   ansible.builtin.include_tasks: "join/main.yml"
-#   when: not pki_directory.stat.exists

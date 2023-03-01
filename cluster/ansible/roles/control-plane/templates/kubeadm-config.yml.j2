@@ -9,7 +9,9 @@ nodeRegistration:
 ---
 apiVersion: kubeadm.k8s.io/v1beta3
 kind: ClusterConfiguration
+{% if control_plane_endpoint is defined %}
 controlPlaneEndpoint: {{ control_plane_endpoint }}:6443
+{% endif %}
 networking:
   dnsDomain: cluster.local
   podSubnet: {{ pod_cidr }}

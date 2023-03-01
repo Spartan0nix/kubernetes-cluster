@@ -1,0 +1,32 @@
+- name: Execute the join command
+  ansible.builtin.script: "{{ playbook_dir }}/roles/control-plane/files/join-worker.sh"
+  register: k8s_join_cmd_output
+  args:
+    executable: /bin/bash
+  become: true
+
+- name: Debug
+  ansible.builtin.debug:
+    var: k8s_join_cmd_output
+
+- name: Approve CSR
+  ansible.builtin.shell: |
+    set -o pipefail
+    for i in `kubectl get csr | grep -i pending | grep -i "system:node:{{ ansible_facts['hostname'] }}" |  awk '{ print $1 }'`
+    do
+      kubectl certificate approve $i
+    done
+  register: csr_approved
+  changed_when: csr_approved.rc == 0
+  args:
+    executable: /bin/bash
+  delegate_to: 192.168.80.11
+
+- name: Add label to node
+  ansible.builtin.shell: |
+    kubectl label node "{{ ansible_facts['hostname'] }}" node-role.kubernetes.io/worker=
+  register: node_label
+  changed_when: node_label.rc == 0
+  args:
+    executable: /bin/bash
+  delegate_to: 192.168.80.11
