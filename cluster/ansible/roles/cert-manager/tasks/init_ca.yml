@@ -1,0 +1,45 @@
+- name: Get base64 CA certificate
+  ansible.builtin.shell: |
+    set -o pipefail
+    cat /etc/kubernetes/pki/ca.crt | base64 -w0
+  register: certmanager_ca
+  changed_when: certmanager_ca.rc == 0
+  args:
+    executable: /bin/bash
+  become: true
+
+- name: Get base64 CA certificate key
+  ansible.builtin.shell: |
+    set -o pipefail
+    cat /etc/kubernetes/pki/ca.key | base64 -w0
+  register: certmanager_key
+  changed_when: certmanager_key.rc == 0
+  args:
+    executable: /bin/bash
+  become: true
+
+- name: Store CA in a secret
+  kubernetes.core.k8s:
+    state: present
+    resource_definition:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: cluster-ca
+        namespace: cert-manager
+      data:
+        tls.crt: "{{ certmanager_ca.stdout }}"
+        tls.key: "{{ certmanager_key.stdout }}"
+
+- name: Create a ClusterIssuer
+  kubernetes.core.k8s:
+    state: present
+    resource_definition:
+      apiVersion: cert-manager.io/v1
+      kind: ClusterIssuer
+      metadata:
+        name: cluster-ca-issuer
+        namespace: cert-manager
+      spec:
+        ca:
+          secretName: cluster-ca

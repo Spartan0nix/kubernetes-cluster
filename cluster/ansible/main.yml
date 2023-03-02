@@ -5,6 +5,12 @@
       - name: control-node-1
         ip: 192.168.80.11
         port: 6443
+      - name: control-node-2
+        ip: 192.168.80.12
+        port: 6443
+      - name: control-node-3
+        ip: 192.168.80.13
+        port: 6443
   roles:
     - haproxy
 
@@ -16,6 +22,7 @@
 - name: Intialize cluster
   hosts: control_plane
   vars:
+    # Uncomment the following line when deploying multiple node to the control plane
     # control_plane_endpoint: cluster-endpoint
     control_plane_cidr: 192.168.80.0/24
     pod_cidr: 172.16.0.0/16
@@ -36,3 +43,9 @@
   hosts: workers
   roles:
     - worker
+
+- name: Install tools
+  hosts: tools
+  roles:
+    - metric-server
+    - cert-manager

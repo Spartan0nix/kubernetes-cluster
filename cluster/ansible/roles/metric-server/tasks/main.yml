@@ -1,0 +1,15 @@
+- name: Check for existing deployment
+  kubernetes.core.k8s_info:
+    api_version: apps/v1
+    kind: Deployment
+    namespace: kube-system
+    name: metrics-server
+  register: metric_server_deployment
+
+- name: Install metric-server for single node control-plane
+  ansible.builtin.include_tasks: "setup_single.yml"
+  when: (not groups['control_plane_ha'] is defined) and (metric_server_deployment.resources | length == 0)
+
+- name: Install metric-server for high availibility control-plane
+  ansible.builtin.include_tasks: "setup_ha.yml"
+  when: (groups['control_plane_ha'] is defined) and (metric_server_deployment.resources | length == 0)

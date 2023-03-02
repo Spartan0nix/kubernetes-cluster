@@ -1,78 +1,18 @@
-# -- TODO
+- name: Check for existing cert-manager controller pod
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Pod
+    namespace: cert-manager
+    label_selectors:
+      - "app.kubernetes.io/component=controller"
+      - "app.kubernetes.io/instance=cert-manager"
+      - "app.kubernetes.io/name=cert-manager"
+  register: certmanager_pod
 
-# - name: Check for existing cert-manager controller pod
-#   kubernetes.core.k8s_info:
-#     api_version: v1
-#     kind: Pod
-#     namespace: cert-manager
-#     label_selectors:
-#       - "app.kubernetes.io/component=controller"
-#       - "app.kubernetes.io/instance=cert-manager"
-#       - "app.kubernetes.io/name=cert-manager"
-#   register: certmanager_pod
+- name: Install cert-manager
+  ansible.builtin.include_tasks: "init.yml"
+  when: certmanager_pod.resources | length == 0
 
-# - name: Get resources manifest
-#   ansible.builtin.get_url:
-#     url: https://github.com/cert-manager/cert-manager/releases/download/v1.10.0/cert-manager.yaml
-#     dest: /tmp/cert-manager.yaml
-#     mode: 0644
-#   when: certmanager_pod.resources | length == 0
-
-# - name: Execute resources manifest
-#   kubernetes.core.k8s:
-#     src: /tmp/cert-manager.yaml
-#     state: present
-#   when: certmanager_pod.resources | length == 0
-
-# - name: Remove resources manifest
-#   ansible.builtin.file:
-#     path: /tmp/cert-manager.yaml
-#     state: absent
-#   when: certmanager_pod.resources | length == 0
-
-# - name: Get base64 CA certificate
-#   ansible.builtin.shell: |
-#     set -o pipefail
-#     cat /etc/kubernetes/pki/ca.crt | base64 -w0
-#   register: certmanager_ca
-#   args:
-#     executable: /bin/bash
-#   when: certmanager_pod.resources | length == 0
-
-# - name: Get base64 CA certificate key
-#   ansible.builtin.shell: |
-#     set -o pipefail
-#     cat /etc/kubernetes/pki/ca.key | base64 -w0
-#   register: certmanager_key
-#   args:
-#     executable: /bin/bash
-#   become: true
-#   when: certmanager_pod.resources | length == 0
-
-# - name: Store CA in secret
-#   kubernetes.core.k8s:
-#     state: present
-#     resource_definition:
-#       apiVersion: v1
-#       kind: Secret
-#       metadata:
-#         name: cluster-ca
-#         namespace: cert-manager
-#       data:
-#         tls.crt: "{{ certmanager_ca.stdout }}"
-#         tls.key: "{{ certmanager_key.stdout }}"
-#   when: certmanager_pod.resources | length == 0
-
-# # - name: Create a ClusterIssuer
-# #   kubernetes.core.k8s:
-# #     state: present
-# #     resource_definition:
-# #       apiVersion: cert-manager.io/v1
-# #       kind: ClusterIssuer
-# #       metadata:
-# #         name: cluster-ca-issuer
-# #         namespace: cert-manager
-# #       spec:
-# #         ca:
-# #           secretName: cluster-ca
-# # when: certmanager_pod.resources | length == 0
+- name: Configure CA resources
+  ansible.builtin.include_tasks: "init_ca.yml"
+  when: certmanager_pod.resources | length == 0

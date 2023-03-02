@@ -1,0 +1,15 @@
+- name: Get metric-server manifest
+  ansible.builtin.get_url:
+    url: https://github.com/kubernetes-sigs/metrics-server/releases/latest/download/high-availability.yaml
+    dest: /tmp/metrics-server.yml
+    mode: "0644"
+
+- name: Apply metrics-server manifest
+  kubernetes.core.k8s:
+    state: present
+    src: /tmp/metrics-server.yml
+
+- name: Remove metric-server manifest
+  ansible.builtin.file:
+    path: /tmp/metrics-server.yml
+    state: absent

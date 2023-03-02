@@ -1,0 +1,16 @@
+- name: Get resources manifest
+  ansible.builtin.get_url:
+    url: https://github.com/cert-manager/cert-manager/releases/download/v1.11.0/cert-manager.yaml
+    dest: /tmp/cert-manager.yml
+    mode: "0644"
+
+- name: Execute resources manifest
+  kubernetes.core.k8s:
+    src: /tmp/cert-manager.yml
+    state: present
+    wait: true
+
+- name: Remove resources manifest
+  ansible.builtin.file:
+    path: /tmp/cert-manager.yml
+    state: absent

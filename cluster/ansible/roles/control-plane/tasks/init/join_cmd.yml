@@ -41,3 +41,9 @@
     mode: "0644"
     flat: true
   become: true
+
+- name: Remove join command
+  ansible.builtin.file:
+    path: /tmp/join.sh
+    state: absent
+  become: true
