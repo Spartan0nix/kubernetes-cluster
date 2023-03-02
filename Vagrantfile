@@ -18,7 +18,7 @@ Vagrant.configure("2") do |config|
   # Configurable variables
   #-----------------------------------
   controlNode = 1
-  workerNode = 2
+  workerNode = 1
   #-----------------------------------
 
   # Disable default Vagrant mount 
