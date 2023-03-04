@@ -1,0 +1,39 @@
+- name: Update the system
+  ansible.builtin.apt:
+    update_cache: true
+    upgrade: true
+    autoclean: true
+    autoremove: true
+  become: true
+
+- name: Install prerequisites
+  ansible.builtin.package: # noqa: package-latest
+    name:
+      - apt-transport-https
+      - gpg
+    state: latest
+  become: true
+
+- name: Add APT repo
+  ansible.builtin.shell: |
+    set -o pipefail
+
+    wget -qO- https://artifacts.elastic.co/GPG-KEY-elasticsearch \
+      | gpg --dearmor \
+      | tee /etc/apt/trusted.gpg.d/elasticsearch-keyring.gpg
+
+    chmod 644 /etc/apt/trusted.gpg.d/elasticsearch-keyring.gpg
+    chown root:root /etc/apt/trusted.gpg.d/elasticsearch-keyring.gpg
+
+    echo "deb [signed-by=/etc/apt/trusted.gpg.d/elasticsearch-keyring.gpg] https://artifacts.elastic.co/packages/8.x/apt stable main" \
+      | tee /etc/apt/sources.list.d/elastic-8.x.list
+  register: apt_repo_els
+  changed_when: apt_repo_els.rc == 0
+  args:
+    executable: /bin/bash
+  become: true
+
+- name: Update package repositories
+  ansible.builtin.apt:
+    update_cache: true
+  become: true

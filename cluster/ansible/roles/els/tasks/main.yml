@@ -1,0 +1,23 @@
+- name: Check for previous elasticsearch install
+  ansible.builtin.stat:
+    path: /etc/elasticsearch/elasticsearch.yml
+  register: els_install
+  become: true
+
+- name: Setup elasticsearch APT repo
+  ansible.builtin.include_tasks: "setup_apt.yml"
+  when: not els_install.stat.exists
+
+- name: Setup elasticsearch
+  ansible.builtin.include_tasks: "setup_elasticsearch.yml"
+  when: not els_install.stat.exists
+
+- name: Check for previous kibana install
+  ansible.builtin.stat:
+    path: /etc/kibana/kibana.yml
+  register: kibana_install
+  become: true
+
+- name: Setup kibana
+  ansible.builtin.include_tasks: "setup_kibana.yml"
+  when: not kibana_install.stat.exists

@@ -1,0 +1,94 @@
+- name: Install packages # noqa: package-latest
+  ansible.builtin.package:
+    name:
+      - elasticsearch
+      - curl
+    state: latest
+  become: true
+
+- name: Start elasticsearch service
+  ansible.builtin.systemd:
+    name: elasticsearch
+    state: started
+    enabled: true
+  become: true
+
+- name: Reset elastic user password
+  ansible.builtin.shell:
+    set -o pipefail
+
+    /usr/share/elasticsearch/bin/elasticsearch-reset-password --user elastic --silent --batch
+  register: elastic_pwd
+  changed_when: elastic_pwd.rc == 0
+  failed_when: elastic_pwd.rc != 0
+  become: true
+  args:
+    executable: /bin/bash
+
+- name: Save elastic user password to a file
+  ansible.builtin.shell:
+    echo "{{ elastic_pwd.stdout }}" > /root/els_pwd.txt
+  register: elastic_pwd_file
+  changed_when: elastic_pwd_file.rc == 0
+  become: true
+  args:
+    executable: /bin/bash
+
+- name: Save elastic user password locally
+  ansible.builtin.fetch:
+    src: /root/els_pwd.txt
+    dest: "{{ role_path }}/files/els_pwd.txt"
+    mode: "0600"
+    flat: true
+  become: true
+
+- name: Remove elastic user file
+  ansible.builtin.file:
+    path: /root/els_pwd.txt
+    state: absent
+  become: true
+
+- name: Update elasticsearch configuration
+  ansible.builtin.replace:
+    path: /etc/elasticsearch/elasticsearch.yml
+    regexp: "{{ item.regex }}"
+    replace: "{{ item.replace }}"
+  loop:
+    - { regex: '#(\s+)?cluster.name:.+', replace: "cluster.name: local-elk" }
+    - { regex: '#(\s+)?node.name:.+', replace: "node.name: {{ ansible_facts['nodename'] }}" }
+    - { regex: '#(\s+)?network.host:.+', replace: "network.host: {{ ansible_facts['all_ipv4_addresses'] \
+      | select('regex', '^192.168.80.[0-9]{1,3}$') \
+      | first }}" }
+    - { regex: '(#)?(\s+)?http.host: 0.0.0.0', replace: "\nhttp.host: [_local_, _site_]" }
+  become: true
+
+- name: Add jvm memory configuration
+  ansible.builtin.blockinfile:
+    path: /etc/elasticsearch/jvm.options.d/els-memory.options
+    block: |
+      -Xms512m
+      -Xmx512m
+    create: true
+    mode: "0640"
+    owner: "root"
+    group: "elasticsearch"
+  become: true
+
+- name: Restart elasticsearch service
+  ansible.builtin.systemd:
+    name: elasticsearch
+    state: restarted
+  become: true
+
+- name: Verify installation
+  ansible.builtin.shell: |
+    EXTERNAL_IP="{{ ansible_facts['all_ipv4_addresses'] | select('regex', '^192.168.80.[0-9]{1,3}$') | first }}"
+
+    curl --cacert /etc/elasticsearch/certs/http_ca.crt --silent -u elastic:"{{ elastic_pwd.stdout }}" https://localhost:9200
+    curl --cacert /etc/elasticsearch/certs/http_ca.crt --silent -u elastic:"{{ elastic_pwd.stdout }}" https://$EXTERNAL_IP:9200
+  register: elastic_check
+  changed_when: elastic_check.rc == 0
+  failed_when: elastic_check.rc != 0
+  become: true
+  args:
+    executable: /bin/bash
