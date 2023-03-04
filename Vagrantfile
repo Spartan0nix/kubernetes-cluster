@@ -18,7 +18,7 @@ Vagrant.configure("2") do |config|
   # Configurable variables
   #-----------------------------------
   controlNode = 1
-  workerNode = 1
+  workerNode = 2
   #-----------------------------------
 
   # Disable default Vagrant mount 
@@ -71,9 +71,9 @@ Vagrant.configure("2") do |config|
     end
   end
 
-  # ---------------------------------
-  # Worker nodes (Kubernetes)
-  # ---------------------------------
+  ---------------------------------
+  Worker nodes (Kubernetes)
+  ---------------------------------
   (1..workerNode).each do |i|
     config.vm.define "worker-node-#{i}" do |node|
       node.vm.box = "node-box"
@@ -84,6 +84,21 @@ Vagrant.configure("2") do |config|
         vb.cpus = 2
       end
     end
+  end
+
+  # ---------------------------------
+  # Elasticsearch
+  # ---------------------------------
+  config.vm.define "elasticsearch" do |els|
+    els.vm.box = "debian/bullseye64"
+    els.vm.hostname = "elasticsearch"
+    els.vm.network "private_network", ip: "192.168.80.31"
+    els.vm.provider "virtualbox" do |vb|
+      vb.memory = 2048
+      vb.cpus = 2
+    end
+    
+    configureSSHKey(els)
   end
  
 end

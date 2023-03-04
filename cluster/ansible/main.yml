@@ -49,3 +49,8 @@
   roles:
     - metric-server
     - cert-manager
+
+- name: Intialize monitoring controller
+  hosts: monitoring
+  roles:
+    - els
