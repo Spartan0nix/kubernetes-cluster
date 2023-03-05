@@ -30,3 +30,18 @@
   args:
     executable: /bin/bash
   delegate_to: 192.168.80.11
+
+- name: Wait for cilium agent Ready state (timeout 6min)
+  kubernetes.core.k8s_info:
+    kind: Pod
+    namespace: kube-system
+    label_selectors:
+      - "app.kubernetes.io/name=cilium-agent"
+      - "app.kubernetes.io/part-of=cilium"
+      - "k8s-app=cilium"
+    field_selectors:
+      - spec.nodeName="{{ ansible_facts['hostname'] }}"
+    wait: true # Wait for pod creation
+    wait_sleep: 10 # Check every 10s
+    wait_timeout: 360 # 6 minutes
+  delegate_to: 192.168.80.11
