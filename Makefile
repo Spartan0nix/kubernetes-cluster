@@ -7,7 +7,9 @@ genkey:
 reset-known-hosts:
 	ssh-keygen -f "$$HOME/.ssh/known_hosts" -R "192.168.80.10"
 	ssh-keygen -f "$$HOME/.ssh/known_hosts" -R "192.168.80.11"
-	ssh-keygen -f "$$HOME/.ssh/known_hosts" -R "192.168.80.12"
+	ssh-keygen -f "$$HOME/.ssh/known_hosts" -R "192.168.80.21"
+	ssh-keygen -f "$$HOME/.ssh/known_hosts" -R "192.168.80.22"
+	ssh-keygen -f "$$HOME/.ssh/known_hosts" -R "192.168.80.31"
 
 up:
 	vagrant.exe up
