@@ -79,6 +79,13 @@
     - { regex: '#(\s+)?elasticsearch.ssl.certificateAuthorities:.+', replace: 'elasticsearch.ssl.certificateAuthorities: [ "/etc/kibana/certs/http_ca.crt" ]' }
   become: true
 
+- name: Set kibana memory limitation
+  ansible.builtin.replace:
+    path: /etc/kibana/node.options
+    regexp: '[#]+(\s+)?--max-old-space-size=.+'
+    replace: "--max-old-space-size=512"
+  become: true
+
 - name: Start kibana service
   ansible.builtin.systemd:
     name: kibana

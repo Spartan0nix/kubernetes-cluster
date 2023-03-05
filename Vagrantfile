@@ -71,9 +71,9 @@ Vagrant.configure("2") do |config|
     end
   end
 
-  ---------------------------------
-  Worker nodes (Kubernetes)
-  ---------------------------------
+  # ---------------------------------
+  # Worker nodes (Kubernetes)
+  # ---------------------------------
   (1..workerNode).each do |i|
     config.vm.define "worker-node-#{i}" do |node|
       node.vm.box = "node-box"
