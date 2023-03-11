@@ -16,6 +16,7 @@ echo "" >> /etc/hosts
 echo "# Provide by vagrant shell provisionning at first boot" >> /etc/hosts
 echo "192.168.80.10 cluster-endpoint" >> /etc/hosts
 echo "192.168.80.30 nfs-server" >> /etc/hosts
+echo "192.168.80.31 elasticsearch" >> /etc/hosts
 
 for ((i = 1 ; i <= $controlNode ; i++))
 do
