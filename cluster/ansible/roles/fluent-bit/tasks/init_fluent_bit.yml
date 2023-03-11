@@ -49,3 +49,8 @@
     values_files:
       - /tmp/values.yml
     wait: true
+
+- name: Remove helm values file
+  ansible.builtin.file:
+    path: /tmp/values.yml
+    state: absent
