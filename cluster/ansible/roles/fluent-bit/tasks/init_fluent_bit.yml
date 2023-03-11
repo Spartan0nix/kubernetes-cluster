@@ -1,0 +1,51 @@
+- name: Add fluent-bit Helm repo
+  kubernetes.core.helm_repository:
+    name: fluent
+    repo_url: "https://fluent.github.io/helm-charts"
+
+- name: Create fluent-bit namespace
+  kubernetes.core.k8s:
+    name: fluent-bit
+    api_version: v1
+    kind: Namespace
+    state: present
+
+- name: Retrieve the elasticsearch CA cert
+  ansible.builtin.shell: |
+    set -o pipefail
+    s
+    cat /etc/elasticsearch/certs/http_ca.crt | base64
+  register: els_ca
+  changed_when: els_ca.rc == 0
+  failed_when: els_ca.rc != 0
+  args:
+    executable: /bin/bash
+  become: true
+  delegate_to: "{{ groups['monitoring'][0] }}"
+
+- name: Store the CA in a secret
+  kubernetes.core.k8s:
+    definition:
+      apiVersion: v1
+      kind: Secret
+      type: Opaque
+      metadata:
+        name: els-ca-cert
+        namespace: fluent-bit
+      data:
+        elasticsearch-ca.pem: "{{ els_ca.stdout }}"
+
+- name: Copy helm values file
+  ansible.builtin.template:
+    src: fluent-bit-values.yml.j2
+    dest: /tmp/values.yml
+    mode: "0600"
+
+- name: Install the helm release
+  kubernetes.core.helm:
+    release_name: fluent-bit
+    chart_ref: fluent/fluent-bit
+    release_namespace: fluent-bit
+    values_files:
+      - /tmp/values.yml
+    wait: true

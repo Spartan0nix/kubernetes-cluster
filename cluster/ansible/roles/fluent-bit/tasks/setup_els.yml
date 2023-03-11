@@ -1,0 +1,47 @@
+- name: Create fluentbit admin role
+  ansible.builtin.uri:
+    url: https://localhost:9200/_security/role/fluentbit_admin?pretty
+    ca_path: /etc/elasticsearch/certs/http_ca.crt
+    method: POST
+    user: elastic
+    password: "{{ lookup('ansible.builtin.password', playbook_dir + '/roles/els/files/els_pwd.txt') }}"
+    status_code: 200
+    return_content: true
+    body: >-
+      {{
+        {
+          "indices": [
+            {
+              "names": [ "fluent-bit-*" ],
+              "privileges": [ "all" ]
+            }
+          ]
+        }
+      }}
+    body_format: json
+  register: fluent_bit_role
+  become: true
+  delegate_to: "{{ groups['monitoring'][0] }}"
+
+- name: Display returned content
+  ansible.builtin.debug:
+    var: fluent_bit_role.json
+
+- name: Generate a random password for fluent-bit user
+  ansible.builtin.set_fact:
+    fluent_bit_password: "{{ lookup('ansible.builtin.password', role_path + '/files/fluentbit_pwd.txt', length=16) }}"
+
+- name: Create fluent-bit user
+  ansible.builtin.shell:
+    set -o pipefail
+
+    /usr/share/elasticsearch/bin/elasticsearch-users useradd fluentbit \
+      -p "{{ lookup('ansible.builtin.password', role_path + '/files/fluentbit_pwd.txt') }}" \
+      -r fluentbit_admin
+  register: fluent_bit_user
+  changed_when: fluent_bit_user.rc == 0
+  failed_when: fluent_bit_user.rc != 0 and fluent_bit_user.rc != 70 # rc == 70 when user already exists
+  become: true
+  args:
+    executable: /bin/bash
+  delegate_to: "{{ groups['monitoring'][0] }}"

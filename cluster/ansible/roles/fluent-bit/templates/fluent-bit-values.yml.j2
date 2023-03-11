@@ -1,0 +1,35 @@
+config:
+  outputs: |
+    [OUTPUT]
+        Name es
+        Match kube.*
+        Host {{ groups['monitoring'][0] }}
+        Port 9200
+        Logstash_Format True
+        Logstash_Prefix fluent-bit
+        HTTP_User fluentbit
+        HTTP_Passwd {{ lookup('ansible.builtin.password', role_path + '/files/fluentbit_pwd.txt') }}
+        Suppress_Type_Name On
+        tls On
+        tls.verify On
+        tls.ca_file /etc/ssl/certs/elasticsearch-ca.pem
+
+  customParsers: |
+    [PARSER]
+      # http://rubular.com/r/tjUt3Awgg4
+      Name cri
+      Format regex
+      Regex ^(?<time>[^ ]+) (?<stream>stdout|stderr) (?<logtag>[^ ]*) (?<message>.*)$
+      Time_Key time
+      Time_Format %Y-%m-%dT%H:%M:%S.%L%z
+
+extraVolumes:
+  - name: els-ca
+    secret:
+      secretName: els-ca-cert
+
+extraVolumeMounts:
+  - name: els-ca
+    readOnly: true
+    mountPath: "/etc/ssl/certs/elasticsearch-ca.pem"
+    subPath: elasticsearch-ca.pem

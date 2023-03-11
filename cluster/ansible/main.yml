@@ -49,6 +49,7 @@
   roles:
     - metric-server
     - cert-manager
+    - fluent-bit
 
 - name: Intialize monitoring controller
   hosts: monitoring

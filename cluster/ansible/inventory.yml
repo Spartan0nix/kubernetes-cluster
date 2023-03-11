@@ -18,7 +18,7 @@ control_plane:
 workers:
   hosts:
     192.168.80.21:
-    192.168.80.22:
+#     192.168.80.22:
 
 tools:
   hosts:

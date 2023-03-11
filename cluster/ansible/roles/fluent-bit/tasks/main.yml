@@ -1,0 +1,17 @@
+- name: Check for existing fluent-bit pod
+  kubernetes.core.k8s_info:
+    api_version: v1
+    kind: Pod
+    namespace: fluent-bit
+    label_selectors:
+      - app.kubernetes.io/instance=fluent-bit
+      - app.kubernetes.io/name=fluent-bit
+  register: fluentbit_pod
+
+- name: Setup elasticsearch config
+  ansible.builtin.include_tasks: "setup_els.yml"
+  when: fluentbit_pod.resources | length == 0
+
+- name: Init fluent-bit
+  ansible.builtin.include_tasks: "init_fluent_bit.yml"
+  when: fluentbit_pod.resources | length == 0
